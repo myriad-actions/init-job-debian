@@ -1,0 +1,48 @@
+name: 'init-job'
+description: > 
+  initialize job environment with environment variables
+
+inputs:
+  env-path:
+    description: >-
+      path to the configuration file of environment variables
+    default: ./.github/.env
+    required: false
+  github-pat:
+    description: >
+      Personal access token (PAT) used by actions/checkout@v2 
+      to fetch the repository. Note that github token
+      can be used only for the working directory. 
+    required: true
+        
+runs:
+  using: "composite"
+  steps:
+    - name: clean up working directory
+      run : rm -fr *
+      shell: bash
+    - name: checkout current repository
+      uses: actions/checkout@v3
+      with:
+        path: main       
+    - name: load project env
+      run: sudo sed '/^#/d' main//${{ inputs.env-path }} >> $GITHUB_ENV
+      shell: bash
+    - name: checkout tools repository
+      uses: actions/checkout@v3
+      with:
+        repository: ${{ env.CI-SCRIPT-REPO }}
+        ref: ${{ env.CI-SCRIPT-REPO-REF }}
+        token: ${{ inputs.github-pat }}
+        path: ${{ env.CI-SCRIPT-FOLDER-NAME }}  
+    - name: copy tools
+      run: |
+        sudo mkdir -p ${{ env.CI-SCRIPT-WORKING-DIRECTORY }}
+        sudo cp -r ${{ env.CI-SCRIPT-FOLDER-NAME }} ${{ env.CI-SCRIPT-WORKING-DIRECTORY }}
+      shell: bash
+    - name: load cicd env
+      run: sudo sed '/^#/d' ${{ env.CICD-ENV }} >> $GITHUB_ENV
+      shell: bash
+    - name: update file rights
+      run: sudo chmod -R +x * ${{ env.CI-SCRIPT-WORKING-DIRECTORY }}
+      shell: bash 
